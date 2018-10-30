@@ -19,6 +19,7 @@ pip-tools>=1.10
 pylint
 pytest-xdist
 python-vagrant
+requests>=2.20.0
 safety>=1.8.4
 sphinx
 sphinx-autobuild

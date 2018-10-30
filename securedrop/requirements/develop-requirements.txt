@@ -91,7 +91,7 @@ python-gilt==1.2.1        # via molecule
 python-vagrant==0.5.15
 pytz==2017.2              # via babel
 pyyaml==3.12              # via ansible, ansible-lint, bandit, dparse, molecule, python-gilt, sphinx-autobuild, watchdog, yamllint
-requests==2.18.3          # via cookiecutter, docker-py, safety, sphinx
+requests==2.20.0
 s3transfer==0.1.12        # via boto3
 safety==1.8.4
 sh==1.12.14               # via molecule, python-gilt

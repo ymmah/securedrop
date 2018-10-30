@@ -6,6 +6,6 @@ pbr
 pip-tools>2.0.0
 pylint
 pytest
-requests
+requests>=2.20.0
 tox
 pexpect
