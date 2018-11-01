@@ -1,38 +1,44 @@
 #!/bin/bash
-# shellcheck disable=SC2086,SC1090
-#
-#
-
+# Create the GCE instance that will host the Staging VMs. All this script
+# does is provision the instances; the actual config and tests are
+# handled by the adjacent gce-runner script.
 set -u
 set -e
 
-# Create ephemeral directory
-mkdir -p "${EPHEMERAL_DIRECTORY}" || true
+TOPLEVEL="$(git rev-parse --show-toplevel)"
+# shellcheck source=devops/gce-nested/ci-env.sh
+. "${TOPLEVEL}/devops/gce-nested/ci-env.sh"
 
-# Ensure SSH key in-place
-if [ ! -f "${EPHEMERAL_DIRECTORY}/gce.pub" ]; then
-    ssh-keygen -f "${EPHEMERAL_DIRECTORY}/gce" -q -P ""
-fi
+# Lookup the latest GCE image available for use with SD CI.
+# Value will be used in the create call.
+function find_latest_ci_image() {
+    gcloud_call compute images list \
+        --filter="family:fpf-securedrop AND name ~ ^ci-nested-virt" \
+        --sort-by=~Name --limit=1 --format="value(Name)"
+}
 
-# Ensure docker container is launched
-CURDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
-. "${CURDIR}/gce.source"
+# Call out to GCE API and start a new instance, designating
+# the SD CI network settings.
+function create_sd_ci_gce_instance() {
+  # First check that a suitable instance isn't already running.
+  if ! gcloud_call compute instances describe "${FULL_JOB_ID}" >/dev/null 2>&1; then
+      # Fetch latest image id, for use in create call
+      local ci_image
+      ci_image="$(find_latest_ci_image)"
+      # Fire-up remote instance
+      gcloud_call compute instances create "${FULL_JOB_ID}" \
+          --image="$ci_image" \
+          --network securedropci \
+          --subnet ci-subnet \
+          --boot-disk-type=pd-ssd \
+          --machine-type="${GCLOUD_MACHINE_TYPE}" \
+          --metadata "ssh-keys=${SSH_USER_NAME}:$(cat ${EPHEMERAL_DIRECTORY}/gce.pub)"
 
-# Find latest CI image
-IMG_LOCATE=$(gcloud_call compute images list \
-    --filter="family:fpf-securedrop AND name ~ ^ci-nested-virt" \
-    --sort-by=~Name --limit=1 --format="value(Name)")
+      # Give box a few more seconds for SSH to become available
+      sleep 20
+  fi
+}
 
-if ! gcloud_call compute instances describe "${FULL_JOB_ID}" >/dev/null 2>&1; then
-    # Fire-up remote instance
-    gcloud_call compute instances create "${FULL_JOB_ID}" \
-        --image="${IMG_LOCATE}" \
-        --network securedropci \
-        --subnet ci-subnet \
-        --boot-disk-type=pd-ssd \
-        --machine-type="${GCLOUD_MACHINE_TYPE}" \
-        --metadata "ssh-keys=sdci:$(cat ${EPHEMERAL_DIRECTORY}/gce.pub)"
-
-    # Give box a few more seconds for SSH to become available
-    sleep 20
-fi
+# Main logic
+prep_ephemeral_directory
+create_sd_ci_gce_instance
