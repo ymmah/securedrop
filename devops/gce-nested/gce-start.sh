@@ -9,6 +9,15 @@ TOPLEVEL="$(git rev-parse --show-toplevel)"
 # shellcheck source=devops/gce-nested/ci-env.sh
 . "${TOPLEVEL}/devops/gce-nested/ci-env.sh"
 
+
+function create_gce_ssh_key() {
+    # Ensure SSH key in-place
+    if [[ ! -f "$SSH_PUBKEY" ]]; then
+        mkdir -p "$EPHEMERAL_DIRECTORY"
+        ssh-keygen -f "$SSH_PRIVKEY" -q -P ""
+    fi
+}
+
 # Lookup the latest GCE image available for use with SD CI.
 # Value will be used in the create call.
 function find_latest_ci_image() {
@@ -32,7 +41,7 @@ function create_sd_ci_gce_instance() {
           --subnet ci-subnet \
           --boot-disk-type=pd-ssd \
           --machine-type="${GCLOUD_MACHINE_TYPE}" \
-          --metadata "ssh-keys=${SSH_USER_NAME}:$(cat ${EPHEMERAL_DIRECTORY}/gce.pub)"
+          --metadata "ssh-keys=${SSH_USER_NAME}:$(cat $SSH_PUBKEY)"
 
       # Give box a few more seconds for SSH to become available
       sleep 20
@@ -40,5 +49,5 @@ function create_sd_ci_gce_instance() {
 }
 
 # Main logic
-prep_ephemeral_directory
+create_gce_ssh_key
 create_sd_ci_gce_instance

@@ -17,14 +17,6 @@ SSH_TARGET="${SSH_USER_NAME}@${REMOTE_IP}"
 SSH_OPTS=(-i ${SSH_PRIVKEY} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
 
 
-function create_gce_ssh_key() {
-    # Ensure SSH key in-place
-    if [[ ! -f "$SSH_PUBKEY" ]]; then
-        mkdir -p "$EPHEMERAL_DIRECTORY"
-        ssh-keygen -f "$SSH_PRIVKEY" -q -P ""
-    fi
-}
-
 # Wrapper utility to run commands on remote GCE instance
 function ssh_gce {
     # We want all args to be evaluated locally, then passed to the remote
@@ -60,7 +52,6 @@ function copy_securedrop_repo() {
 }
 
 # Main logic
-create_gce_ssh_key
 copy_securedrop_repo
 
 ssh_gce "make build-debs-notest"
